@@ -1,5 +1,7 @@
 const FRONTEND_VERSION = "2026.01.10-radio-fix.14";
-const configuredBaseUrl = "http://127.0.0.1:64770";
+//const configuredBaseUrl = "http://127.0.0.1:64770";
+const configuredBaseUrl = "https://fl-3b9716472cc04227b52a87c3f1044ebe.ecs.eu-west-2.on.aws";
+
 const baseOrigin = typeof window !== "undefined" && window.location ? window.location.origin : "";
 const defaultBaseUrl = configuredBaseUrl || (typeof baseOrigin === "string" && baseOrigin.startsWith("http") ? baseOrigin : "");
 const browserCrypto = typeof window !== "undefined" ? window.crypto : undefined;
