@@ -1,0 +1,304 @@
+openapi: 3.0.3
+info:
+  title: FormBuilder Copilot API
+  version: 1.1.0
+  description: OpenAPI definition for the FormBuilder Copilot backend and AI chat
+    surface.
+servers:
+- url: http://localhost:5000
+  description: Local development
+paths:
+  /api/forms:
+    post:
+      tags:
+      - Forms
+      summary: Create a new form with the default safe layout
+      operationId: createForm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFormRequest'
+      responses:
+        '200':
+          description: Newly created form document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormDocument'
+        '400':
+          description: Invalid request
+  /api/forms/{tenantId}/{formId}:
+    parameters:
+    - $ref: '#/components/parameters/TenantId'
+    - $ref: '#/components/parameters/FormId'
+    get:
+      tags:
+      - Forms
+      summary: Get the latest persisted HTML page
+      operationId: getForm
+      responses:
+        '200':
+          description: Form document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormDocument'
+        '404':
+          description: Form not found
+  /api/forms/{tenantId}/{formId}/save:
+    parameters:
+    - $ref: '#/components/parameters/TenantId'
+    - $ref: '#/components/parameters/FormId'
+    post:
+      tags:
+      - Forms
+      summary: Persist raw Bootstrap HTML as the next immutable version
+      operationId: saveForm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveFormRequest'
+      responses:
+        '200':
+          description: Save result including validation outcome and the stored document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveFormResponse'
+  /api/forms/{tenantId}/{formId}/preview:
+    parameters:
+    - $ref: '#/components/parameters/TenantId'
+    - $ref: '#/components/parameters/FormId'
+    get:
+      tags:
+      - Forms
+      summary: Retrieve preview-ready metadata + HTML
+      operationId: getPreview
+      responses:
+        '200':
+          description: Preview model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewModel'
+        '404':
+          description: Form not found
+  /api/chat:
+    post:
+      tags:
+      - Chat
+      summary: Send a user message to the OpenAI function-calling copilot
+      operationId: sendChatMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Assistant response containing suggested operations and guidance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+  /api/chat/openapi:
+    get:
+      tags:
+      - Chat
+      summary: Download the OpenAPI specification consumed by the AI assistant
+      operationId: getOpenApiDocument
+      responses:
+        '200':
+          description: Raw OpenAPI document
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+components:
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Tenant identifier
+    FormId:
+      name: formId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Form identifier
+  schemas:
+    CreateFormRequest:
+      type: object
+      required:
+      - tenantId
+      - formName
+      properties:
+        tenantId:
+          type: string
+          example: demo
+        formName:
+          type: string
+          example: Contact Form
+        formId:
+          type: string
+          description: Optional explicit form identifier
+    SaveFormRequest:
+      type: object
+      required:
+      - html
+      properties:
+        html:
+          type: string
+        formName:
+          type: string
+          description: Optional override name persisted on save
+    FormDocument:
+      type: object
+      required:
+      - metadata
+      - html
+      properties:
+        metadata:
+          $ref: '#/components/schemas/FormMetadata'
+        html:
+          type: string
+    FormMetadata:
+      type: object
+      required:
+      - tenantId
+      - formId
+      - formName
+      - version
+      - status
+      - createdUtc
+      - updatedUtc
+      properties:
+        tenantId:
+          type: string
+        formId:
+          type: string
+        formName:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+        createdUtc:
+          type: string
+          format: date-time
+        updatedUtc:
+          type: string
+          format: date-time
+    FormValidationResult:
+      type: object
+      required:
+      - isValid
+      - errors
+      - warnings
+      properties:
+        isValid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+    SaveFormResponse:
+      type: object
+      required:
+      - validation
+      properties:
+        validation:
+          $ref: '#/components/schemas/FormValidationResult'
+        document:
+          $ref: '#/components/schemas/FormDocument'
+    PreviewModel:
+      type: object
+      required:
+      - metadata
+      - html
+      - state
+      - validationMessages
+      properties:
+        metadata:
+          $ref: '#/components/schemas/FormMetadata'
+        html:
+          type: string
+        state:
+          type: string
+        validationMessages:
+          type: array
+          items:
+            type: string
+    ChatRequest:
+      type: object
+      required:
+      - tenantId
+      - message
+      properties:
+        tenantId:
+          type: string
+          description: Tenant identifier used for all tool calls
+        formId:
+          type: string
+          description: Optional form identifier the copilot should operate on
+        formName:
+          type: string
+          description: Optional friendly name for the form when creating one
+        sessionId:
+          type: string
+          description: Client-provided identifier to correlate chat sessions
+        message:
+          type: string
+          description: User instruction for the copilot
+    ChatResponse:
+      type: object
+      required:
+      - assistantMessage
+      - executedTools
+      - model
+      properties:
+        assistantMessage:
+          type: string
+          description: Final assistant reply generated after tool use
+        executedTools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatToolExecution'
+        model:
+          type: string
+          description: OpenAI model used for the exchange
+        sessionId:
+          type: string
+          description: Echoed session identifier, if provided
+          nullable: true
+    ChatToolExecution:
+      type: object
+      required:
+      - toolName
+      properties:
+        toolName:
+          type: string
+        arguments:
+          type: string
+          description: JSON arguments the copilot sent to the tool
+        resultSummary:
+          type: string
+          description: Human-readable summary of what the tool accomplished

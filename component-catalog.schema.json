@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://YOUR_DOMAIN/schemas/component-catalog.schema.json",
+  "title": "Component Catalog",
+  "type": "object",
+  "required": ["catalogVersion", "designSystem", "tokens", "components"],
+  "additionalProperties": false,
+  "properties": {
+    "catalogVersion": { "type": "string" },
+    "designSystem": {
+      "type": "object",
+      "required": ["name", "bootstrapVersion"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "enum": ["bootstrap"] },
+        "bootstrapVersion": { "type": "string", "pattern": "^(3|4|5)(\\..*)?$" }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "required": ["spacing", "width", "align", "size", "variant"],
+      "additionalProperties": false,
+      "properties": {
+        "spacing": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "width": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "align": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "size": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "variant": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "commonPropSets": {
+      "type": "object",
+      "description": "Reusable prop groups referenced by components to keep schemas consistent.",
+      "additionalProperties": {
+        "$ref": "#/$defs/propSet"
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/component" }
+    }
+  },
+  "$defs": {
+    "propSet": {
+      "type": "object",
+      "required": ["propsSchema"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "propsSchema": { "$ref": "#/$defs/propsSchema" }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": ["type", "category", "version", "propsSchema", "rules"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]+$",
+          "description": "Stable component type identifier used in FormSpec nodes."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["layout", "structure", "input", "action", "feedback"]
+        },
+        "version": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+
+        "acceptsChildren": { "type": "boolean", "default": false },
+        "childPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowedChildTypes": { "type": "array", "items": { "type": "string" } },
+            "minChildren": { "type": "integer", "minimum": 0 },
+            "maxChildren": { "type": "integer", "minimum": 0 }
+          }
+        },
+
+        "dataBinding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bindable": { "type": "boolean", "default": false },
+            "valueType": {
+              "type": "string",
+              "enum": ["string", "number", "boolean", "date", "string[]", "file", "unknown"]
+            }
+          }
+        },
+
+        "propsSchema": { "$ref": "#/$defs/propsSchema" },
+
+        "rules": {
+          "type": "object",
+          "required": ["a11y", "defaults", "constraints"],
+          "additionalProperties": false,
+          "properties": {
+            "a11y": {
+              "type": "object",
+              "required": ["requiresLabel", "supportsHelpText", "supportsErrorText"],
+              "additionalProperties": false,
+              "properties": {
+                "requiresLabel": { "type": "boolean" },
+                "supportsHelpText": { "type": "boolean" },
+                "supportsErrorText": { "type": "boolean" }
+              }
+            },
+            "defaults": {
+              "type": "object",
+              "description": "Default prop values applied by the builder when omitted.",
+              "additionalProperties": true
+            },
+            "constraints": {
+              "type": "array",
+              "description": "Declarative guardrails for AI and validation logic.",
+              "items": { "$ref": "#/$defs/constraint" }
+            }
+          }
+        }
+      }
+    },
+
+    "propsSchema": {
+      "type": "object",
+      "description": "A JSON Schema describing allowed props for this component.",
+      "required": ["type"],
+      "additionalProperties": true
+    },
+
+    "constraint": {
+      "type": "object",
+      "required": ["id", "severity", "when", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "severity": { "type": "string", "enum": ["error", "warn"] },
+        "when": {
+          "type": "object",
+          "description": "A simple condition language your validator can interpret.",
+          "additionalProperties": false,
+          "properties": {
+            "propExists": { "type": "string" },
+            "propEquals": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "prop": { "type": "string" },
+                "value": {}
+              },
+              "required": ["prop", "value"]
+            },
+            "propIn": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "prop": { "type": "string" },
+                "values": { "type": "array", "items": {} }
+              },
+              "required": ["prop", "values"]
+            }
+          }
+        },
+        "message": { "type": "string" },
+        "suggestedFix": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "setProps": { "type": "object", "additionalProperties": true },
+            "unsetProps": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}
